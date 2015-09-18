@@ -1,27 +1,35 @@
 angular.module('blocJams', ['config', 'services'])
+    .controller('MainCtrl', ['$scope', function($scope) {
+        
+        $scope.bodyClass = '';
+        
+        $scope.$on('$stateChangeSuccess', function(event, toState) {
+            $scope.bodyClass = toState.data.bodyClass;
+        });
+        
+    }])
     .controller('LandingCtrl', ['$scope', function($scope) {
         
         $scope.tagLine = "Turn the music up!";
         
     }])
-    .controller('CollectionCtrl', ['$scope', 'SongPlayer', function($scope, SongPlayer) {
+    .controller('CollectionCtrl', ['$scope', 'albumView', 'SongPlayer', function($scope, albumView, SongPlayer) {
         
         $scope.albums = SongPlayer.getAlbums();
         
         $scope.setAlbum = function($index) {
-            SongPlayer.setCurrentAlbum($index);
+            albumView.currentAlbumView = $scope.albums[$index];
+            if (!SongPlayer.isSongPlaying()) {
+                SongPlayer.setCurrentAlbum($index);
+            }
         };
         
     }])
-    .controller('AlbumCtrl', ['$scope', 'SongPlayer', function($scope, SongPlayer) {
+    .controller('AlbumCtrl', ['$scope', 'albumView', 'SongPlayer', function($scope, albumView, SongPlayer) {
         
-        $scope.album = SongPlayer.getCurrentAlbum();
-        $scope.song = SongPlayer.getSong();
-        $scope.timePosition = function() {
-            while (SongPlayer.isSongPlaying()) {
-                return SongPlayer.getTimePosition();
-            }
-        };
+        $scope.albumView = albumView.currentAlbumView;
+        $scope.albumPlaying = SongPlayer.getCurrentAlbum();
+        $scope.songPlaying = SongPlayer.getSong();
         
         $scope.setSong = function(songNumber) {
             SongPlayer.setSong(songNumber);
@@ -32,16 +40,85 @@ angular.module('blocJams', ['config', 'services'])
         $scope.nextSong = function() {
             SongPlayer.nextSong();
         };
-        $scope.play = function() {
-            SongPlayer.play();
-        };
-        $scope.pause = function() {
-            SongPlayer.pause();
+        $scope.togglePlay = function() {
+            if (SongPlayer.isSongPaused()) {
+                SongPlayer.play();
+            } else if (SongPlayer.isSongPlaying()) {
+                SongPlayer.pause();
+            }
         };
         $scope.setVolume = function(volume) {
             SongPlayer.setVolume(volume);
         };
         
+    }])
+    .directive('slider', ['$document', 'SongPlayer', function($document, SongPlayer) {
+        
+        function updateSeekPercentage(seekBar, seekBarFillRatio) {
+            var offsetXPercent = seekBarFillRatio * 100;
+            offsetXPercent = Math.max(0, offsetXPercent);
+            offsetXPercent = Math.min(100, offsetXPercent);
+
+            var percentageString = offsetXPercent + '%';
+            seekBar.find('.fill').width(percentageString);
+            seekBar.find('.thumb').css({left: percentageString});
+        }
+        
+        function updateSeekPosition(element, event) {
+            var seekBar = element;
+            
+            var offsetX = event.pageX - seekBar.offset().left;
+            var barWidth = seekBar.width();
+            var seekBarFillRatio = offsetX / barWidth;
+
+            if(element.parent().hasClass('seek-control')) {
+                SongPlayer.setTimePosition(seekBarFillRatio * SongPlayer.getCurrentSoundFile().getDuration());
+            } else if (element.parent().hasClass('volume')) {
+                SongPlayer.setVolume(seekBarFillRatio * 100);
+            }
+
+            updateSeekPercentage(seekBar, seekBarFillRatio);
+        }
+        
+        function link(slider, element, attrs) {
+            slider.onMouseDown = function(event) {
+                $document.bind('mousemove.thumb', function(event) {
+                    updateSeekPosition(element, event);
+                });
+                
+                $document.bind('mouseup.thumb', function() {
+                    $document.unbind('mousemove.thumb');
+                    $document.unbind('mouseup.thumb');
+                });
+            };
+            
+            slider.onClick = function(event) {
+                updateSeekPosition(element, event);
+            };
+        }
+    
+        return {
+            restrict: 'E',
+            replace: true,
+            templateUrl: 'templates/slider.html',
+            scope: {
+                slider: '=sliderId'
+            },
+            link: link
+        };
+    }])
+    .directive('playerControls', ['SongPlayer', function(SongPlayer) {
+        
+        function link(scope, element, attrs) {
+            
+        }
+        
+        return {
+            restrict: 'E',
+            replace: true,
+            templateUrl: 'templates/player-controls.html',
+            link: link
+        };
     }]);
 
 angular.module('config', ['ui.router'])
@@ -56,22 +133,34 @@ angular.module('config', ['ui.router'])
             .state('landing', {
                 url: '/',
                 controller: 'LandingCtrl',
-                templateUrl: 'templates/landing.html'
+                templateUrl: 'templates/landing.html',
+                data: {
+                    bodyClass: 'landing'
+                }
             })
             .state('collection', {
                 url: '/collection',
                 controller: 'CollectionCtrl',
-                templateUrl: 'templates/collection.html'
+                templateUrl: 'templates/collection.html',
+                data: {
+                    bodyClass: 'collection'
+                }
             })
             .state('album', {
                 url: '/album',
                 controller: 'AlbumCtrl',
-                templateUrl: 'templates/album.html'
+                templateUrl: 'templates/album.html',
+                data: {
+                    bodyClass: 'album'
+                }
             });
     });
     
 angular.module('services', [])
     .value('albumData', [albumPicasso, albumMarconi, albumBeastieBoys])
+    .value('albumView', {
+        currentAlbumView: null
+    })
     .service('SongPlayer', ['albumData', function(albumData) {
         this.currentAlbum = null;
         this.currentlyPlayingSongNumber = null;
@@ -111,6 +200,9 @@ angular.module('services', [])
             getSong: function() {
                 return this.currentSongFromAlbum;
             },
+            getCurrentSoundFile: function() {
+                return this.currentSoundFile;
+            },
             setSong: function(songNumber) {
                 if (this.currentSoundFile) {
                     this.currentSoundFile.stop();
@@ -128,24 +220,28 @@ angular.module('services', [])
                 this.currentSoundFile.play();
             },
             previousSong: function() {
-                var currentSongIndex = this.currentAlbum.songs.indexOf(this.currentSongFromAlbum);
-                var prevSongIndex = --currentSongIndex;
+                if (this.currentSoundFile) {
+                    var currentSongIndex = this.currentAlbum.songs.indexOf(this.currentSongFromAlbum);
+                    var prevSongIndex = --currentSongIndex;
 
-                if (currentSongIndex < 0) {
-                    prevSongIndex = this.currentAlbum.songs.length - 1;
+                    if (currentSongIndex < 0) {
+                        prevSongIndex = this.currentAlbum.songs.length - 1;
+                    }
+
+                    this.setSong(++prevSongIndex);
                 }
-
-                this.setSong(++prevSongIndex);
             },
             nextSong: function() {
-                var currentSongIndex = this.currentAlbum.songs.indexOf(this.currentSongFromAlbum);
-                var nextSongIndex = ++currentSongIndex;
+                if (this.currentSoundFile) {
+                    var currentSongIndex = this.currentAlbum.songs.indexOf(this.currentSongFromAlbum);
+                    var nextSongIndex = ++currentSongIndex;
 
-                if (nextSongIndex >= this.currentAlbum.songs.length) {
-                    nextSongIndex = 0;
+                    if (nextSongIndex >= this.currentAlbum.songs.length) {
+                        nextSongIndex = 0;
+                    }
+
+                    this.setSong(++nextSongIndex);
                 }
-
-                this.setSong(++nextSongIndex);
             },
             play: function() {
                 if (this.isSongPaused()) { this.currentSoundFile.play(); }
