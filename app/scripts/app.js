@@ -32,7 +32,8 @@ angular.module('blocJams', ['config', 'services'])
         };
     }])
     .controller('AlbumCtrl', ['$scope', 'SongPlayer', function($scope, SongPlayer) {
-        $scope.album = SongPlayer.getAlbums()[SongPlayer.getCurrentAlbumIndex()];
+        $scope.albumView = SongPlayer.getAlbums()[SongPlayer.getCurrentAlbumIndex()];
+        $scope.albumPlaying = SongPlayer.getCurrentAlbum();
         $scope.song = SongPlayer.getSong();
         
         $scope.$on("$destroy", function() {
@@ -254,6 +255,14 @@ angular.module('blocJams', ['config', 'services'])
             if (SongPlayer.getAlbums()[SongPlayer.getCurrentAlbumIndex()].songs[attrs.songNumber - 1].audioUrl) {
                 element.hover(onHover, offHover);
                 element.click(clickHandler);
+                
+                if (SongPlayer.onAlbum(SongPlayer.getCurrentAlbumIndex()) && attrs.songNumber == SongPlayer.getCurrentlyPlayingSongNumber()) {
+                    if (SongPlayer.isSongPlaying) {
+                        element.html(SongPlayer.getPauseButtonTemplate);
+                    } else if (SongPlayer.isSongPaused) {
+                        element.html(SongPlayer.getPlayButtonTemplate);
+                    }
+                }
             }
             
         }
@@ -266,6 +275,23 @@ angular.module('blocJams', ['config', 'services'])
     
 angular.module('services', [])
     .value('albumData', [albumPicasso, albumMarconi, albumBeastieBoys])
+    .filter('timeCode', function() {
+        return function(timeInSeconds) {
+            if (timeInSeconds) {
+                var totalSeconds = parseFloat(timeInSeconds);
+                var minutes = Math.floor(totalSeconds / 60) + "";
+                var seconds = Math.floor(totalSeconds % 60) + "";
+
+                if (seconds.length <= 1) {
+                    seconds = "0" + seconds;
+                }
+
+                return (minutes + ":" + seconds);
+            } else {
+                return null;
+            }
+        };
+    })
     .service('SongPlayer', ['albumData', 'timeCodeFilter', function(albumData, timeCodeFilter) {
         this.currentAlbumIndex = null;
         this.currentAlbum = null;
@@ -401,20 +427,7 @@ angular.module('services', [])
                 }
             }
         };
-    }])
-    .filter('timeCode', function() {
-        return function(timeInSeconds) {
-            var totalSeconds = parseFloat(timeInSeconds);
-            var minutes = Math.floor(totalSeconds / 60) + "";
-            var seconds = Math.floor(totalSeconds % 60) + "";
-
-            if (seconds.length <= 1) {
-                seconds = "0" + seconds;
-            }
-
-            return (minutes + ":" + seconds);
-        };
-    });
+    }]);
 
 angular.module('config', ['ui.router'])
     .config(function($stateProvider, $locationProvider) {

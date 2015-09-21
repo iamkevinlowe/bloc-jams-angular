@@ -1,17 +1,17 @@
 <main class="album-view container narrow">
     <section class="clearfix">
         <div class="column half">
-            <img ng-src="{{ album.albumArtUrl }}" class="album-cover-art">
+            <img ng-src="{{ albumView.albumArtUrl }}" class="album-cover-art">
         </div>
         <div class="album-view-details column half">
-            <h2 class="album-view-title">{{ album.name }}</h2>
-            <h3 class="album-view-artist">{{ album.artist }}</h3>
-            <h5 class="album-view-release-info">{{ album.year }} {{ album.label }}</h5>
+            <h2 class="album-view-title">{{ albumView.name }}</h2>
+            <h3 class="album-view-artist">{{ albumView.artist }}</h3>
+            <h5 class="album-view-release-info">{{ albumView.year }} {{ albumView.label }}</h5>
         </div>
     </section>
     
     <table class="album-view-song-list">
-        <tr class="album-view-song-item" ng-repeat="song in album.songs">
+        <tr class="album-view-song-item" ng-repeat="song in albumView.songs">
             <td class="song-item-number" data-song-number="{{ $index + 1 }}">{{ $index + 1 }}</td>
             <td class="song-item-title">{{ song.name }}</td>
             <td class="song-item-duration">{{ song.length | timeCode }}</td>
@@ -24,14 +24,14 @@
         <player-controls></player-controls>
 
         <div class="player-bar-control-group currently-playing">
-            <h2 class="song-name"></h2>
-            <h2 class="artist-song-mobile"></h2>
+            <h2 class="song-name">{{ song.name }}</h2>
+            <h2 class="artist-song-mobile">{{ albumPlaying.artist }} - {{ song.name }}</h2>
             <div class="seek-control">
                 <slider slider-id="seek"></slider>
                 <div class="current-time"></div>
-                <div class="total-time"></div>
+                <div class="total-time">{{ song.length | timeCode }}</div>
             </div>
-            <h3 class="artist-name"></h3>
+            <h3 class="artist-name">{{ albumPlaying.artist }}</h3>
         </div>
         
         <div class="player-bar-control-group right-controls">
