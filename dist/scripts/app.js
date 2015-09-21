@@ -266,7 +266,7 @@ angular.module('blocJams', ['config', 'services'])
     
 angular.module('services', [])
     .value('albumData', [albumPicasso, albumMarconi, albumBeastieBoys])
-    .service('SongPlayer', ['albumData', function(albumData) {
+    .service('SongPlayer', ['albumData', 'timeCodeFilter', function(albumData, timeCodeFilter) {
         this.currentAlbumIndex = null;
         this.currentAlbum = null;
         this.currentlyPlayingSongNumber = null;
@@ -289,7 +289,7 @@ angular.module('services', [])
                 this.setTotalTimeInPlayerBar(this.currentSongFromAlbum.length);
             },
             setTotalTimeInPlayerBar: function(totalTime) {
-                $('.total-time').text(this.filterTimeCode(totalTime));
+                $('.total-time').text(timeCodeFilter(totalTime));
             },
             updateSeekBarWhileSongPlays: function() {
                 var songPlayer = this;
@@ -305,22 +305,7 @@ angular.module('services', [])
                 }
             },
             setCurrentTimeInPlayerBar: function(currentTime) {
-                $('.current-time').text(this.filterTimeCode(currentTime));
-            },
-            filterTimeCode: function(timeInSeconds) {
-                if (typeof timeInSeconds === 'number') {
-                    var totalSeconds = parseFloat(timeInSeconds);
-                    var minutes = Math.floor(totalSeconds / 60) + "";
-                    var seconds = Math.floor(totalSeconds % 60) + "";
-                    
-                    if (seconds.length <= 1) {
-                        seconds = "0" + seconds;
-                    }
-                    
-                    return (minutes + ":" + seconds);
-                } else {
-                    return timeInSeconds;
-                }
+                $('.current-time').text(timeCodeFilter(currentTime));
             },
             updateSeekPercentage: function(seekBar, seekBarFillRatio) {
                 var offsetXPercent = seekBarFillRatio * 100;
@@ -416,7 +401,20 @@ angular.module('services', [])
                 }
             }
         };
-    }]);
+    }])
+    .filter('timeCode', function() {
+        return function(timeInSeconds) {
+            var totalSeconds = parseFloat(timeInSeconds);
+            var minutes = Math.floor(totalSeconds / 60) + "";
+            var seconds = Math.floor(totalSeconds % 60) + "";
+
+            if (seconds.length <= 1) {
+                seconds = "0" + seconds;
+            }
+
+            return (minutes + ":" + seconds);
+        };
+    });
 
 angular.module('config', ['ui.router'])
     .config(function($stateProvider, $locationProvider) {

@@ -14,7 +14,7 @@
         <tr class="album-view-song-item" ng-repeat="song in album.songs">
             <td class="song-item-number" data-song-number="{{ $index + 1 }}">{{ $index + 1 }}</td>
             <td class="song-item-title">{{ song.name }}</td>
-            <td class="song-item-duration">{{ song.length }}</td>
+            <td class="song-item-duration">{{ song.length | timeCode }}</td>
         </tr>
     </table>
 </main>
@@ -24,14 +24,14 @@
         <player-controls></player-controls>
 
         <div class="player-bar-control-group currently-playing">
-            <h2 class="song-name">{{ song.name }}</h2>
-            <h2 class="artist-song-mobile">{{ song.name }} - {{ album.artist }}</h2>
+            <h2 class="song-name"></h2>
+            <h2 class="artist-song-mobile"></h2>
             <div class="seek-control">
                 <slider slider-id="seek"></slider>
-                <div class="current-time">{{ timePosition }}</div>
-                <div class="total-time">{{ song.length }}</div>
+                <div class="current-time"></div>
+                <div class="total-time"></div>
             </div>
-            <h3 class="artist-name">{{ album.artist }}</h3>
+            <h3 class="artist-name"></h3>
         </div>
         
         <div class="player-bar-control-group right-controls">
